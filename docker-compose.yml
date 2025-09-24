@@ -1,51 +1,53 @@
+version: '3.8'
+
 services:
-  db:
-    image: mysql:8.0
-    container_name: cineva-db
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: video
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "3308:3306"  # ✅ CHANGED: 3307 → 3308 (port was already allocated)
+db:
+image: mysql:8.0
+container_name: cineva-db
+environment:
+MYSQL_ROOT_PASSWORD: root
+MYSQL_DATABASE: video
+volumes:
+- mysql_data:/var/lib/mysql
+healthcheck:
+test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+interval: 10s
+timeout: 5s
+retries: 10
+ports:
+- "3308:3306" # Local port mapping to the container's MySQL port
 
-  backend:
-    build: ./CinevaBackend
-    container_name: cineva-backend
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      SERVER_PORT: 8081
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/video?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
-      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 100MB
-      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 100MB
-    ports:
-      - "8082:8081"
-    restart: unless-stopped
-    volumes:
-      - ./videos:/app/videos
+backend:
+build: ./CinevaBackend
+container_name: cineva-backend
+depends_on:
+db:
+condition: service_healthy
+environment:
+SERVER_PORT: 8081
+SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/video?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+SPRING_DATASOURCE_USERNAME: root
+SPRING_DATASOURCE_PASSWORD: root
+SPRING_JPA_HIBERNATE_DDL_AUTO: update
+SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQL8Dialect
+SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 100MB
+SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 100MB
+ports:
+- "8082:8081" # Local port mapping to the container's backend port
+restart: unless-stopped
+volumes:
+- ./videos:/app/videos
 
-  frontend:
-    build: ./docker-frontend  # ✅ CHANGED: docker-frontend → video_fro (folder name fix)
-    container_name: cineva-frontend
-    depends_on:
-      - backend
-    ports:
-      - "3000:80"
-    restart: unless-stopped
-    volumes:
-      - ./videos:/usr/share/nginx/html/videos
+frontend:
+build: ./docker-frontend
+container_name: cineva-frontend
+depends_on:
+- backend
+ports:
+- "3000:80" # Local port mapping to the container's web server port
+restart: unless-stopped
+volumes:
+- ./videos:/usr/share/nginx/html/videos
 
 volumes:
-  mysql_data:
+mysql_data:
